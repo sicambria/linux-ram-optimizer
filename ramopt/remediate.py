@@ -474,6 +474,10 @@ SWAP_MIN_GB = 4
 SWAP_MAX_GB = 32
 DEFAULT_SWAP_PATH = "/swap.img"
 SWAPPINESS_PATH = "/proc/sys/vm/swappiness"
+# A drop-in here makes vm.swappiness survive reboots. Without it, `sysctl -w`
+# only sets the live /proc value, which the kernel resets to its default (60)
+# on the next boot — silently undoing the low-swappiness intent.
+SWAPPINESS_CONF_PATH = "/etc/sysctl.d/99-ramopt-swappiness.conf"
 
 
 def validate_swap_size(size_gb: int) -> int:
@@ -519,7 +523,11 @@ def build_swap_commands(
         f"awk '$1==\"{path}\" && $3==\"swap\"{{found=1}} END{{exit !found}}' "
         f"/etc/fstab || echo '{path} none swap sw 0 0' >> /etc/fstab")
     if swappiness is not None:
+        # `sysctl -w` sets the live value now; the drop-in makes it persist
+        # across reboots (the live value alone reverts to the kernel default).
         commands.append(f"sysctl -w vm.swappiness={swappiness}")
+        commands.append(
+            f"printf 'vm.swappiness=%s\\n' {swappiness} > {SWAPPINESS_CONF_PATH}")
     del file_exists  # reserved for callers that branch on resize-vs-create
     return commands
 

@@ -188,6 +188,22 @@ class AddSwapTests(unittest.TestCase):
         result_none = self.add(8, apply=False, swappiness=None)
         self.assertFalse(any("swappiness" in c for c in result_none["commands"]))
 
+    def test_swappiness_persisted_via_sysctl_dropin(self):
+        # `sysctl -w` only sets the live value, which reverts to the kernel
+        # default on reboot. A drop-in under /etc/sysctl.d makes it stick, so
+        # both commands must be present (live + persistent).
+        result = self.add(8, apply=False, swappiness=10)
+        persist_cmd = next(
+            (c for c in result["commands"] if "/etc/sysctl.d/" in c), None)
+        self.assertIsNotNone(persist_cmd)
+        self.assertIn("vm.swappiness", persist_cmd)
+        self.assertIn("10", persist_cmd)
+        self.assertIn("99-ramopt-swappiness.conf", persist_cmd)
+        # No drop-in is written when swappiness is left unmanaged.
+        result_none = self.add(8, apply=False, swappiness=None)
+        self.assertFalse(
+            any("/etc/sysctl.d/" in c for c in result_none["commands"]))
+
     def test_refuses_when_swap_already_configured(self):
         ran = []
         result = self.add(16, apply=True, geteuid=lambda: 0,

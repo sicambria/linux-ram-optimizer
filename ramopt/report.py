@@ -276,7 +276,7 @@ def render_swap_human(result: dict) -> str:
     lines.append("=" * 25)
     lines.append(
         f"Plan: a {result['size_gb']} GiB swapfile at {result['path']}"
-        + (f", vm.swappiness={result['swappiness']}."
+        + (f", vm.swappiness={result['swappiness']} (persisted across reboots)."
            if result.get("swappiness") is not None else "."))
     lines.append("")
     lines.append("Swap gives the kernel somewhere to page idle anonymous memory "
