@@ -1,0 +1,15 @@
+Name:	sample-proc
+Umask:	0022
+State:	S (sleeping)
+Tgid:	4242
+Pid:	4242
+PPid:	1
+Uid:	1000	1000	1000	1000
+Gid:	1000	1000	1000	1000
+VmPeak:	  900000 kB
+VmSize:	  850000 kB
+VmRSS:	  123456 kB
+RssAnon:	  100000 kB
+RssFile:	   23456 kB
+VmSwap:	    2048 kB
+Threads:	7

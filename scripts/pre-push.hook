@@ -1,0 +1,11 @@
+#!/bin/sh
+# linux-ram-optimizer pre-push guardrail.
+#
+# Refuses any push whose tracked tree contains personal, host-unique, or
+# secret-shaped data (see scripts/check_sensitive.py). git does not version
+# .git/hooks, so this tracked copy is the source of truth — install it with:
+#
+#   ln -sf ../../scripts/pre-push.hook .git/hooks/pre-push
+#
+# (or `cp`). `make check-sensitive` runs the same scan on demand.
+exec "$(git rev-parse --show-toplevel)/scripts/check_sensitive.py"

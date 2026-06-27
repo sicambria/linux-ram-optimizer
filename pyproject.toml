@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linux-ram-optimizer"
+version = "1.0.0"
+description = "Diagnose why Linux RAM is in use and reclaim cache safely."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+keywords = ["linux", "memory", "ram", "diagnostics", "proc", "drop_caches"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Monitoring",
+]
+# No runtime dependencies: the tool uses only the Python standard library.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/sicambria/linux-ram-optimizer"
+Source = "https://github.com/sicambria/linux-ram-optimizer"
+
+[project.scripts]
+ram-optimizer = "ramopt.cli:main"
+
+[tool.setuptools]
+packages = ["ramopt"]

@@ -1,0 +1,16 @@
+6176fde93000-7ffdf0c59000 ---p 00000000 00:00 0                          [rollup]
+Rss:              123456 kB
+Pss:               65432 kB
+Pss_Dirty:         40000 kB
+Pss_Anon:          40000 kB
+Pss_File:          25432 kB
+Pss_Shmem:             0 kB
+Shared_Clean:      20000 kB
+Shared_Dirty:          0 kB
+Private_Clean:     63456 kB
+Private_Dirty:     40000 kB
+Referenced:       123456 kB
+Anonymous:         40000 kB
+Swap:               2048 kB
+SwapPss:            2048 kB
+Locked:                0 kB
