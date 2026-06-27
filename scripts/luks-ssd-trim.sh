@@ -16,8 +16,12 @@
 #   1. set `allow-discards` on the LUKS2 header (applies live AND persists),
 #   2. refresh any LVM LV stacked on top so it re-inherits discard from below
 #      (an LV activated before discard existed caches "no discard" in its
-#      device-mapper table until reloaded),
-#   3. run a one-time catch-up `fstrim`, then print SMART wear.
+#      device-mapper table). NOTE: a live `lvchange --refresh` does NOT always
+#      re-propagate discard to the LV; when it doesn't, the persistent LUKS
+#      flag makes it take effect on the next boot — the script detects this and
+#      tells you to reboot instead of pretending the trim worked.
+#   3. run a one-time catch-up `fstrim` (only once discard truly reaches the
+#      filesystem layer), then print SMART wear.
 # It enables the *capability* so the existing fstrim.timer works — it does NOT
 # turn on continuous `discard` mounting (a separate, generally-avoided option).
 #
@@ -66,7 +70,8 @@ cryptsetup luksDump "$LUKS_DEV" | grep -i '^Flags:' \
   || echo "    WARNING: no Flags line in header — verify manually"
 
 # --- 3. propagate discard up through any LVM logical volume -----------------
-for lvdm in $(lsblk -rno NAME,TYPE "$LUKS_DEV" | awk '$2=="lvm"{print $1}'); do
+LVM_NODES=$(lsblk -rno NAME,TYPE "$LUKS_DEV" | awk '$2=="lvm"{print $1}')
+for lvdm in $LVM_NODES; do
   pair=$(lvs --noheadings -o vg_name,lv_name "/dev/mapper/$lvdm" 2>/dev/null \
          | awk 'NF>=2{print $1"/"$2; exit}')
   if [ -n "${pair:-}" ]; then
@@ -75,15 +80,33 @@ for lvdm in $(lsblk -rno NAME,TYPE "$LUKS_DEV" | awk '$2=="lvm"{print $1}'); do
   fi
 done
 
-# --- 4. verify discard now reaches every layer (DISC-MAX must be non-zero) --
+# --- 4. verify discard ACTUALLY reached the top (LV) layer ------------------
+# A live refresh doesn't always re-propagate discard to an LV activated before
+# discard existed below it. Check the real sysfs limit; if any LV is still 0,
+# the trim would silently skip the encrypted root — so defer to a reboot.
 echo
 echo "==> Discard capability through the stack:"
 lsblk -D -o NAME,DISC-GRAN,DISC-MAX,MOUNTPOINT "$DISK"
+needs_reboot=0
+for lvdm in $LVM_NODES; do
+  node=$(basename "$(readlink -f "/dev/mapper/$lvdm")")
+  dmax=$(cat "/sys/block/$node/queue/discard_max_bytes" 2>/dev/null || echo 0)
+  [ "${dmax:-0}" = "0" ] && needs_reboot=1
+done
 
-# --- 5. one-time catch-up TRIM ---------------------------------------------
+# --- 5. trim — but only if discard truly reaches the filesystem layer -------
 echo
-echo "==> Catch-up fstrim:"
-fstrim -av
+if [ "$needs_reboot" = "1" ]; then
+  echo "!! An LVM volume still reports discard_max_bytes=0 after refresh."
+  echo "!! The allow-discards flag is now PERSISTENT in the LUKS header, so it"
+  echo "!! takes effect on the next boot (the stack rebuilds discard-capable)."
+  echo "!! ACTION: reboot, then verify:  lsblk -D   &&   sudo fstrim -v /"
+  echo "!! (Trimming only the filesystems that already support discard now.)"
+  fstrim -av || true
+else
+  echo "==> Catch-up fstrim:"
+  fstrim -av
+fi
 
 # --- 6. SSD wear (ground truth) --------------------------------------------
 echo
